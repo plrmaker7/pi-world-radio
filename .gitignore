@@ -4,3 +4,10 @@
 /tmp
 /app/data
 */node_modules
+
+# IDE and editor settings
+.claude/
+.vscode/
+
+# Logs
+*.log
