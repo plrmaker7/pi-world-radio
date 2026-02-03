@@ -400,3 +400,183 @@ The following CSS-only loading animations are from https://codepen.io/mjcabangon
 .mapbox-improve-map {
   display: None;
 }
+
+/*****************************
+CRT Screen Effect
+******************************/
+
+/* CRT overlay container with amber tint */
+.crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  background-color: rgba(255, 160, 0, 0.08);
+}
+
+/* Scanlines effect */
+.crt-overlay::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+}
+
+/* Screen flicker animation */
+@keyframes crt-flicker {
+  0% { opacity: 0.97; }
+  5% { opacity: 0.95; }
+  10% { opacity: 0.97; }
+  15% { opacity: 0.94; }
+  20% { opacity: 0.98; }
+  50% { opacity: 0.96; }
+  80% { opacity: 0.97; }
+  90% { opacity: 0.94; }
+  100% { opacity: 0.98; }
+}
+
+/* Vignette and slight curvature effect - darker amber edges */
+.crt-overlay::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 50%,
+    rgba(20, 12, 0, 0.4) 85%,
+    rgba(10, 6, 0, 0.7) 100%
+  );
+  pointer-events: none;
+}
+
+/* Apply CRT effect to body */
+body.crt-effect {
+  animation: crt-flicker 0.15s infinite;
+  background-color: #1a1409;
+}
+
+/* Amber glow on text elements */
+body.crt-effect #player-info,
+body.crt-effect #channels_title,
+body.crt-effect #sysinfo_title {
+  text-shadow:
+    0 0 5px rgba(255, 176, 0, 0.5),
+    0 0 10px rgba(255, 140, 0, 0.3);
+}
+
+/* Amber phosphor glow effect on bright elements */
+body.crt-effect .icon_wrapper {
+  box-shadow:
+    0 0 15px rgba(255, 176, 0, 0.2),
+    0 0 30px rgba(255, 140, 0, 0.1),
+    inset 0 0 20px rgba(255, 176, 0, 0.05);
+}
+
+/* Amber glow on channel list */
+body.crt-effect #channels,
+body.crt-effect #sysinfo,
+body.crt-effect #sysinfo_actions {
+  box-shadow: 0 0 10px rgba(255, 176, 0, 0.15);
+}
+
+/* Amber tint on the crosshair */
+body.crt-effect #crosshair > img {
+  filter: sepia(1) saturate(3) brightness(1.2) hue-rotate(-10deg);
+}
+
+/* Random static/interference lines - amber tint */
+.crt-static-line {
+  position: fixed;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 176, 0, 0.15) 10%,
+    rgba(255, 200, 50, 0.4) 50%,
+    rgba(255, 176, 0, 0.15) 90%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 10000;
+  opacity: 0;
+}
+
+@keyframes static-line-move {
+  0% {
+    top: -2px;
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.8;
+  }
+  95% {
+    opacity: 0.8;
+  }
+  100% {
+    top: 100vh;
+    opacity: 0;
+  }
+}
+
+.crt-static-line.active {
+  animation: static-line-move 0.3s linear forwards;
+}
+
+/* Thicker interference band - amber tint */
+.crt-static-band {
+  position: fixed;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 176, 0, 0.08) 20%,
+    rgba(255, 200, 50, 0.2) 50%,
+    rgba(255, 176, 0, 0.08) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 10000;
+  opacity: 0;
+}
+
+@keyframes static-band-move {
+  0% {
+    top: -8px;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100vh;
+    opacity: 0;
+  }
+}
+
+.crt-static-band.active {
+  animation: static-band-move 0.8s linear forwards;
+}

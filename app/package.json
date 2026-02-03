@@ -12,10 +12,14 @@
     "fastify": "^4.19.2",
     "node-fetch": "^2.6.12",
     "nodemon": "^3.0.1",
-    "onoff": "^6.0.3",
     "os-utils": "^0.0.14",
-    "rpi_measure_temp": "^1.0.0",
     "sqlite3": "^5.1.6"
+  },
+  "optionalDependencies": {
+    "onoff": "^6.0.3",
+    "rpi_measure_temp": "^1.0.0",
+    "mcp-spi-adc": "^3.1.0",
+    "@fastify/websocket": "^8.3.1"
   },
   "engines": {
     "node": "18.x"

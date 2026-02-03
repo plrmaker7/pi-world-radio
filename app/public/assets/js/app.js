@@ -164,6 +164,31 @@ var setVolume = function(up) {
   }
   Howler.volume(volume/100);
   setVolumeIcon(volume);
+  // Unmute if adjusting volume while muted
+  if (isMuted && volume > 0) {
+    isMuted = false;
+  }
+}
+
+// Mute state
+var isMuted = false;
+var volumeBeforeMute = 50;
+
+// toggleMute - Toggle mute on/off
+var toggleMute = function() {
+  if (isMuted) {
+    // Unmute - restore previous volume
+    isMuted = false;
+    volume = volumeBeforeMute;
+    Howler.volume(volume/100);
+    setVolumeIcon(volume);
+  } else {
+    // Mute - save current volume and set to 0
+    isMuted = true;
+    volumeBeforeMute = volume;
+    Howler.volume(0);
+    setVolumeIcon(0);
+  }
 }
 
 // from jquery source (via https://stackoverflow.com/a/33456469)
@@ -848,10 +873,10 @@ window.addEventListener("keydown", function (event) {
 //
 // Initialize Mapbox
 
-mapboxgl.accessToken = ".................................................................."
+mapboxgl.accessToken = "pk.eyJ1IjoicGxybWFrZXI3IiwiYSI6ImNtbDE3bWR6cjA0c2UzZm9maHdkam5zN28ifQ.p7ZVdXnCugcDWNg9hdG3Og"
 const map = new mapboxgl.Map({
   container: "map",
-  style: "mapbox://styles/wrecker/clkz7vn0000n301pb1mtjho13",
+  style: "mapbox://styles/plrmaker7/clm29bkmr024n01qx6h237xk2",
   center: [-53, 35.2],
   zoom: 2.2,
   minZoom: 2.05,
@@ -913,81 +938,80 @@ var getChannelsAtCenter = function () {
 
 // When the map loads, add the radio.garden data
 map.on("load", () => {
-  map.addSource("locations", {
-    type: "geojson",
-    data: "/assets/js/geo_json.min.json",
-    generateId: true, // This ensures that all features have unique IDs
-  });
-
-  // Add locations as a layer and style it
-  map.addLayer({
-    id: "locations",
-    type: "circle",
-    source: "locations",
-    layout: {
-      // Make the layer visible by default.
-      "visibility": "none"
-    },
-    paint: {
-      // The feature-state dependent circle-radius expression will render
-      // the radius size according to its magnitude when
-      // a feature's hover state is set to true
-      //'circle-radius': 5,
-      "circle-radius": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        // zoom is 5 (or less) -> circle radius will be 1px
-        5,
-        1,
-        // zoom is 20 (or greater) -> circle radius will be 10px
-        20,
-        40,
-      ],
-      // "circle-stroke-color": "#d32da0",
-      "circle-stroke-color": "#b07126",
-      "circle-stroke-width": 1,
-      // The feature-state dependent circle-color expression will render
-      // the color according to its magnitude when
-      // a feature's hover state is set to true
-      // "circle-color": "#d32da0",
-      "circle-color": "#b08116",
-      "circle-opacity": 0.5,
-    },
-  });
-
-  map.on("click", "locations", (e) => {
-    getChannels(e.features[0].properties.location_id, e.features[0].properties.title + ", " + e.features[0].properties.country,
-                e.features[0].properties.lng, e.features[0].properties.lat);
-    selectTopChannel();
-  });
-
-  map.on("zoomend", () => {
-    zl = map.getZoom();
-    if (zl >= 5.0) {
-      map.setLayoutProperty("locations", "visibility", "visible");
-    } else {
-      map.setLayoutProperty("locations", "visibility", "none");
-      clearChannelsList();
-    }
-  });
-
-
-  map.on("moveend", () => {
-    if (ignoreMapMoveOnce) {
-      ignoreMapMoveOnce = false;
+  // Load the radio tower icon
+  map.loadImage("/assets/img/signal-tower.png", (error, image) => {
+    if (error) {
+      console.log("Error loading tower icon:", error);
       return;
     }
-    // check if map center has moved significantly
-    // typically zoom-in/out will not change center
-    if (compareCoordinates(currentCenter, map.getCenter())) {    
-      clearTimeout(getChannelsDelayTimer);
-      currentZoom = map.getZoom()
-      if (currentZoom >= 5.0) { 
-        getChannelsDelayTimer = setTimeout(getChannelsAtCenter, 500);
+    map.addImage("radio-tower", image);
+
+    map.addSource("locations", {
+      type: "geojson",
+      data: "/assets/js/geo_json.min.json",
+      generateId: true, // This ensures that all features have unique IDs
+    });
+
+    // Add locations as a layer with radio tower icons
+    map.addLayer({
+      id: "locations",
+      type: "symbol",
+      source: "locations",
+      layout: {
+        // Make the layer visible by default.
+        "visibility": "none",
+        "icon-image": "radio-tower",
+        "icon-size": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          // zoom is 5 (or less) -> icon size
+          5,
+          0.15,
+          // zoom is 10 -> icon size
+          10,
+          0.35,
+          // zoom is 15 (or greater) -> icon size
+          15,
+          0.6,
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    });
+
+    map.on("click", "locations", (e) => {
+      getChannels(e.features[0].properties.location_id, e.features[0].properties.title + ", " + e.features[0].properties.country,
+                  e.features[0].properties.lng, e.features[0].properties.lat);
+      selectTopChannel();
+    });
+
+    map.on("zoomend", () => {
+      zl = map.getZoom();
+      if (zl >= 5.0) {
+        map.setLayoutProperty("locations", "visibility", "visible");
+      } else {
+        map.setLayoutProperty("locations", "visibility", "none");
+        clearChannelsList();
       }
-    }
-  });    
+    });
+
+    map.on("moveend", () => {
+      if (ignoreMapMoveOnce) {
+        ignoreMapMoveOnce = false;
+        return;
+      }
+      // check if map center has moved significantly
+      // typically zoom-in/out will not change center
+      if (compareCoordinates(currentCenter, map.getCenter())) {
+        clearTimeout(getChannelsDelayTimer);
+        currentZoom = map.getZoom()
+        if (currentZoom >= 5.0) {
+          getChannelsDelayTimer = setTimeout(getChannelsAtCenter, 500);
+        }
+      }
+    });
+  }); // end loadImage callback
 });
 
 //////////////////////////////////////////////////////////////////////
@@ -1010,30 +1034,32 @@ var playStream = function (event) {
 
   playingAnimation.style.display = "none";
   loadingAnimation.style.display = "";
-  console.log(event.target);
-  nowPlaying.textContent = "Loading: " + event.target.title;
-  locationDisplay.textContent = event.target.location;
-  
+  var channelElem = event.currentTarget;
+  console.log(channelElem);
+  nowPlaying.textContent = "Loading: " + channelElem.title;
+  locationDisplay.textContent = channelElem.location;
+
   d = new Date();
   stream_url =
-    "https://radio.garden/api/ara/content/listen/" +
-    event.currentTarget.channelId +
-    "/channel.mp3?" +
+    "/stream/" +
+    channelElem.channelId +
+    "?" +
     new Date().valueOf();
   player = new Howl({
     src: [stream_url],
     html5: true,
     autoplay: false,
     volume: volume / 100,
+    format: ['mp3', 'aac', 'mpeg'],
   });
-  // attach additional data to the player object      
-  player.channelId = event.target.channelId;
-  player.title = event.target.title;
-  player.location = event.target.location;
-  player.lng = event.target.lng;
-  player.lat = event.target.lat;
-  player.isFav = event.target.isFav;
-  toggleFavIcon(event.target.isFav > 0);
+  // attach additional data to the player object
+  player.channelId = channelElem.channelId;
+  player.title = channelElem.title;
+  player.location = channelElem.location;
+  player.lng = channelElem.lng;
+  player.lat = channelElem.lat;
+  player.isFav = channelElem.isFav;
+  toggleFavIcon(channelElem.isFav > 0);
 
   player.once(
     "load",
@@ -1041,16 +1067,16 @@ var playStream = function (event) {
       staticPlayer.stop();
       loadingAnimation.style.display = "none";
       playingAnimation.style.display = "";
-      nowPlaying.textContent = this.target.title;
-      locationDisplay.textContent = this.target.location;
+      nowPlaying.textContent = channelElem.title;
+      locationDisplay.textContent = channelElem.location;
       playingAnimation.addEventListener("click", stopStream, false);
       addToHistory();
-      if (event.target.flyToOnSelect) {
+      if (channelElem.flyToOnSelect) {
         ignoreMapMoveOnce = true;
         map.flyTo({center: [player.lng, player.lat], curve: 1, zoom: 8, essential: true, speed: 0.7 })
       }
       player.play();
-    }.bind(event)
+    }
   );
 
   player.once(
@@ -1058,18 +1084,18 @@ var playStream = function (event) {
     function () {
       console.log("stream load error");
       loadingAnimation.style.display = "none";
-      nowPlaying.textContent = "Offline: " + this.target.textContent;
+      nowPlaying.textContent = "Offline: " + channelElem.title;
       playerActive = false;
       player.unload();
       player = null;
-    }.bind(event)
+    }
   );
 
   player.once(
     "play",
     function () {
       playerActive = true;
-    }.bind(event)
+    }
   );
 
 };
@@ -1098,6 +1124,7 @@ favWrapper.addEventListener("click", handleFavoriteClick);
 favListWrapper.addEventListener("click", showFavorites);
 historyWrapper.addEventListener("click", showHistory);
 sysinfoIconWrapper.addEventListener("click", showHideSysinfo);
+volumeIconWrapper.addEventListener("click", toggleMute);
 
 reload_btn.addEventListener("click", showConfirmationModal);
 restart_btn.addEventListener("click", showConfirmationModal);
@@ -1120,3 +1147,242 @@ const observer = new MutationObserver(function (mutationList, observer) {
 });
 
 observer.observe(channels, { attributes: false, childList: true, subtree: false });
+
+//////////////////////////////////////////////////////////////////////
+// CRT Static Line Effect
+
+(function initCRTStaticEffect() {
+  // Create static line elements
+  var staticLine = document.createElement('div');
+  staticLine.className = 'crt-static-line';
+  document.body.appendChild(staticLine);
+
+  var staticBand = document.createElement('div');
+  staticBand.className = 'crt-static-band';
+  document.body.appendChild(staticBand);
+
+  // Function to trigger a random static line
+  function triggerStaticLine() {
+    staticLine.classList.remove('active');
+    // Force reflow to restart animation
+    void staticLine.offsetWidth;
+    staticLine.classList.add('active');
+  }
+
+  // Function to trigger a thicker static band
+  function triggerStaticBand() {
+    staticBand.classList.remove('active');
+    void staticBand.offsetWidth;
+    staticBand.classList.add('active');
+  }
+
+  // Random interval for static lines (more frequent)
+  function scheduleStaticLine() {
+    var delay = 2000 + Math.random() * 5000; // 2-7 seconds
+    setTimeout(function() {
+      triggerStaticLine();
+      scheduleStaticLine();
+    }, delay);
+  }
+
+  // Random interval for static bands (less frequent)
+  function scheduleStaticBand() {
+    var delay = 8000 + Math.random() * 15000; // 8-23 seconds
+    setTimeout(function() {
+      triggerStaticBand();
+      scheduleStaticBand();
+    }, delay);
+  }
+
+  // Start the effects after a short delay
+  setTimeout(scheduleStaticLine, 3000);
+  setTimeout(scheduleStaticBand, 5000);
+})();
+
+//////////////////////////////////////////////////////////////////////
+// Thumbstick Controller (WebSocket client for Pi GPIO controls)
+
+(function initThumbstickControls() {
+  var ws = null;
+  var reconnectAttempts = 0;
+  var maxReconnectAttempts = 5;
+  var zoomModeActive = false;
+
+  function connect() {
+    // Use WebSocket protocol based on current page protocol
+    var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var wsUrl = protocol + '//' + window.location.host + '/ws/controls';
+
+    try {
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = function() {
+        console.log('Thumbstick WebSocket connected');
+        reconnectAttempts = 0;
+      };
+
+      ws.onmessage = function(event) {
+        try {
+          var data = JSON.parse(event.data);
+          handleThumbstickEvent(data);
+        } catch (e) {
+          console.log('Invalid thumbstick message:', e);
+        }
+      };
+
+      ws.onclose = function() {
+        console.log('Thumbstick WebSocket disconnected');
+        ws = null;
+        // Attempt to reconnect
+        if (reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          setTimeout(connect, 2000 * reconnectAttempts);
+        }
+      };
+
+      ws.onerror = function(err) {
+        console.log('Thumbstick WebSocket error - controls not available');
+        // Don't spam console on non-Pi systems
+      };
+    } catch (e) {
+      console.log('WebSocket not supported or unavailable');
+    }
+  }
+
+  function handleThumbstickEvent(data) {
+    switch (data.type) {
+      case 'connected':
+        console.log('Thumbstick controller ready, Pi mode:', data.isRaspberryPi);
+        break;
+
+      case 'leftClick':
+        // Toggle zoom mode
+        zoomModeActive = data.zoomMode;
+        showZoomModeIndicator(zoomModeActive);
+        console.log('Zoom mode:', zoomModeActive ? 'ON' : 'OFF');
+        break;
+
+      case 'rightClick':
+        // Play selected station
+        playSelectedChannel();
+        break;
+
+      case 'zoom':
+        // Zoom in/out
+        if (data.direction === 'in') {
+          map.zoomIn();
+        } else if (data.direction === 'out') {
+          map.zoomOut();
+        }
+        break;
+
+      case 'pan':
+        // Pan the map
+        panMap(data.direction);
+        break;
+
+      case 'navigate':
+        // Navigate channel list
+        navigateChannelList(data.direction);
+        break;
+    }
+  }
+
+  function showZoomModeIndicator(active) {
+    // Show/hide zoom mode indicator
+    var indicator = document.getElementById('zoom-mode-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = 'zoom-mode-indicator';
+      indicator.style.cssText = 'position:fixed;top:80px;right:20px;padding:8px 12px;' +
+        'background:rgba(255,176,0,0.8);color:#000;border-radius:5px;font-size:14px;' +
+        'z-index:9998;display:none;font-weight:bold;';
+      indicator.textContent = 'ZOOM MODE';
+      document.body.appendChild(indicator);
+    }
+    indicator.style.display = active ? 'block' : 'none';
+  }
+
+  function playSelectedChannel() {
+    // Find and click the currently highlighted channel
+    var highlighted = document.querySelector('.channel_highlight');
+    if (highlighted) {
+      highlighted.click();
+    } else {
+      // If no channel highlighted, try to play/stop current
+      if (playerActive) {
+        stopStream();
+      }
+    }
+  }
+
+  function panMap(direction) {
+    var panAmount = 100; // pixels
+    var offset = { x: 0, y: 0 };
+
+    switch (direction) {
+      case 'up':
+        offset.y = -panAmount;
+        break;
+      case 'down':
+        offset.y = panAmount;
+        break;
+      case 'left':
+        offset.x = -panAmount;
+        break;
+      case 'right':
+        offset.x = panAmount;
+        break;
+    }
+
+    map.panBy([offset.x, offset.y], { duration: 200 });
+  }
+
+  function navigateChannelList(direction) {
+    // Left/right controls volume
+    if (direction === 'left') {
+      setVolume(false); // Volume down
+      return;
+    } else if (direction === 'right') {
+      setVolume(true); // Volume up
+      return;
+    }
+
+    // Up/down navigates channel list
+    var channelsList = document.querySelectorAll('.channel');
+    if (channelsList.length === 0) return;
+
+    // Find current highlighted index
+    var currentIndex = -1;
+    channelsList.forEach(function(ch, idx) {
+      if (ch.classList.contains('channel_highlight')) {
+        currentIndex = idx;
+      }
+    });
+
+    var newIndex = currentIndex;
+
+    switch (direction) {
+      case 'up':
+        newIndex = currentIndex > 0 ? currentIndex - 1 : channelsList.length - 1;
+        break;
+      case 'down':
+        newIndex = currentIndex < channelsList.length - 1 ? currentIndex + 1 : 0;
+        break;
+    }
+
+    if (newIndex !== currentIndex && newIndex >= 0) {
+      // Remove highlight from current
+      if (currentIndex >= 0) {
+        channelsList[currentIndex].classList.remove('channel_highlight');
+      }
+      // Add highlight to new
+      channelsList[newIndex].classList.add('channel_highlight');
+      // Scroll into view
+      channelsList[newIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  // Connect to WebSocket
+  connect();
+})();
