@@ -1385,4 +1385,20 @@ observer.observe(channels, { attributes: false, childList: true, subtree: false 
 
   // Connect to WebSocket
   connect();
+
+  // Audio context keepalive - prevent browser from suspending audio
+  // This helps with USB audio devices that stop working
+  document.addEventListener('visibilitychange', function() {
+    if (Howler.ctx && Howler.ctx.state === 'suspended') {
+      Howler.ctx.resume();
+    }
+  });
+
+  // Periodic keepalive to resume audio context if suspended
+  setInterval(function() {
+    if (Howler.ctx && Howler.ctx.state === 'suspended') {
+      Howler.ctx.resume();
+      console.log('Resumed suspended audio context');
+    }
+  }, 5000);
 })();
