@@ -378,8 +378,9 @@ const wsClients = new Set();
 fastify.register(async function (fastify) {
   if (!websocketEnabled) return;
 
-  fastify.get('/ws/controls', { websocket: true }, (socket, req) => {
+  fastify.get('/ws/controls', { websocket: true }, (connection, req) => {
     console.log('WebSocket client connected for controls');
+    const socket = connection.socket;
     wsClients.add(socket);
 
     socket.on('message', (message) => {
@@ -403,7 +404,9 @@ fastify.register(async function (fastify) {
     });
 
     // Send initial state
-    socket.send(JSON.stringify({ type: 'connected', isRaspberryPi: isRaspberryPi }));
+    if (socket.readyState === 1) { // WebSocket.OPEN
+      socket.send(JSON.stringify({ type: 'connected', isRaspberryPi: isRaspberryPi }));
+    }
   });
 });
 
